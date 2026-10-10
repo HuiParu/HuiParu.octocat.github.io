@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B3A6B">
+<title>天津中考录取预测系统</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<header class="app-bar">
+  <div class="app-bar__inner">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 20h18"/><path d="M6 20V9"/><path d="M12 20V4"/><path d="M18 20v-7"/>
+        </svg>
+      </span>
+      <div class="brand__text">
+        <h1>天津中考录取预测系统</h1>
+        <p>基于 2023–2026 一分一档与全市录取分数线</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="主导航">
+      <button class="tab is-active" role="tab" aria-selected="true" data-view="predict">成绩预测</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="docs">资料中心</button>
+    </nav>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- ======================= 成绩预测 ======================= -->
+  <section id="view-predict" class="view is-active">
+    <form id="predictForm" class="card form-card" novalidate>
+      <div class="card__head">
+        <h2>考生信息</h2>
+        <p class="card__sub">填写所在区、考生类型与各科成绩，生成升学定位与可报院校报告</p>
+      </div>
+
+      <div class="card__body">
+        <div class="field-grid">
+          <label class="field">
+            <span class="field__label">姓名</span>
+            <input type="text" id="fName" placeholder="请输入考生姓名" autocomplete="off" maxlength="12">
+          </label>
+          <label class="field">
+            <span class="field__label">所在区 / 区域</span>
+            <select id="fDistrict"></select>
+          </label>
+          <label class="field">
+            <span class="field__label">考生类型</span>
+            <select id="fType"></select>
+          </label>
+          <label class="field">
+            <span class="field__label">参考年份</span>
+            <select id="fYear"></select>
+          </label>
+        </div>
+
+        <div class="section-title">
+          <h3>各科成绩</h3>
+          <div class="total-chip" id="totalChip">
+            <span>总分</span>
+            <strong id="liveTotal">0</strong>
+            <span class="total-chip__of">/ 800</span>
+          </div>
+        </div>
+
+        <div class="subject-grid" id="subjectGrid"></div>
+        <p class="hint" id="subjectHint"></p>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            生成预测报告
+          </button>
+          <button type="button" class="btn btn--ghost" id="btnDemo">载入示例</button>
+          <button type="button" class="btn btn--ghost" id="btnReset">重置</button>
+        </div>
+      </div>
+    </form>
+
+    <div id="result" aria-live="polite"></div>
+  </section>
+
+  <!-- ======================= 资料中心 ======================= -->
+  <section id="view-docs" class="view" hidden>
+    <div class="card">
+      <div class="card__head">
+        <h2>资料中心</h2>
+        <p class="card__sub">本次整理的全部成果文档与数据表，点击卡片即可在站内查看</p>
+      </div>
+      <div class="card__body">
+        <div class="doc-grid" id="docGrid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h2>数据速览</h2>
+        <p class="card__sub">系统内置的数据规模（点击可展开明细）</p>
+      </div>
+      <div class="card__body">
+        <div class="stat-row" id="dataStat"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-foot">
+  <p>数据来源：《天津市高级中等学校招生报考指南》扫描件及各区录取分数线公示表</p>
+  <p class="app-foot__note">本系统为升学定位参考工具，预测结果不构成录取承诺，实际录取以天津市教育招生考试院公布为准。</p>
+</footer>
+
+<!-- 文档预览弹层 -->
+<div class="modal" id="docModal" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="docModalTitle">
+    <div class="modal__bar">
+      <h3 id="docModalTitle">文档</h3>
+      <div class="modal__tools">
+        <a class="modal__link" id="docOpenNew" href="#" target="_blank" rel="noopener">新窗口打开</a>
+        <button type="button" class="modal__close" data-close aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <iframe id="docFrame" title="文档预览" loading="lazy"></iframe>
+  </div>
+</div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

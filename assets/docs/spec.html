@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中考成绩预测程序说明</title>
+<link rel="stylesheet" href="../css/doc.css">
+</head>
+<body>
+<header class="doc-head"><div class="doc-head__inner">
+<span class="doc-badge">技术规格</span>
+<h1>中考成绩预测程序说明</h1>
+<p>位次法预测模型：数据源、算法流程、接口设计与验收标准</p>
+</div></header>
+<main class="doc-body">
+<nav class="doc-toc"><h4>目录</h4><ol><li><a href="#h0">天津中考「成绩 → 位次 → 可报院校」预测程序 · 设计说明</a></li></ol></nav><h2 id="h0">天津中考「成绩 → 位次 → 可报院校」预测程序 · 设计说明</h2>
+<blockquote><p>本文件写给后续实现该程序的开发者（人或 AI）。<br>目标：输入一名考生的中考升学总成绩与所在区，输出其<strong>全市位次</strong>、<strong>市内六区位次</strong>，并给出<strong>可报考院校清单</strong>（按 冲 / 稳 / 保 分档）。<br>所有数据源均为本地已整理好的 Excel 文件，路径见第 3 节。</p></blockquote>
+<hr>
+<h3>1. 目标与范围</h3>
+<div class="doc-table-wrap"><table><thead><tr><th>项目</th><th>说明</th></tr></thead><tbody><tr><td>输入</td><td><code>score</code>（升学总成绩，含政策照顾加分，0–800，可带小数）、<code>district</code>（考生所在区，如「和平区」「武清区」「滨海新区-塘沽」）、可选 <code>year</code>（参考年份，默认取最新一年）</td></tr><tr><td>输出 1</td><td>全市位次（及位次区间）</td></tr><tr><td>输出 2</td><td>市内六区位次（及位次区间）</td></tr><tr><td>输出 3</td><td>可报考院校清单，含每校近三年录取线、对应位次、冲/稳/保标签</td></tr><tr><td>不做</td><td>不预测当年分数线、不替代官方志愿填报系统；结论仅供决策参考</td></tr></tbody></table></div>
+<hr>
+<h3>2. 核心方法论：为什么必须用「位次」而不是「分数」</h3>
+<p>各年试题难度与考生人数不同，<strong>同一分数的含金量逐年变化</strong>（例：2026 年 780 分以上 96 人，2025 年 203 人）。因此跨年比较院校录取线必须换算成<strong>位次</strong>：</p>
+<ol><li>用<strong>该年的一分一档表</strong>把「院校最低录取分」换算成「该年录取末位考生的位次」；</li><li>用<strong>同一张一分一档表</strong>把「考生分数」换算成「考生位次」；</li><li>两者在<strong>位次维度</strong>上比较，跨越年份可比。</li></ol>
+<p><strong>前提</strong>：一分一档表本身已含政策照顾加分（源文件表头注明「含政策照顾加分」），因此输入的 <code>score</code> 必须是<strong>含照顾加分的升学总成绩</strong>，不得再加一次分。</p>
+<hr>
+<h3>3. 数据源清单（已就绪）</h3>
+<div class="doc-table-wrap"><table><thead><tr><th>用途</th><th>文件</th><th>结构</th></tr></thead><tbody><tr><td>2023 一分一档</td><td><code>D:\_OA\天津中考资料整理\2023\2023一分一档.xlsx</code> → <code>Sheet1</code></td><td>A=分数档（如 <code>775以上</code>）、B=全市累计、C=市内六区累计；775→500，276 行</td></tr><tr><td>2024 一分一档</td><td><code>D:\_OA\天津中考资料整理\2024\2024一分一档.xlsx</code> → <code>Sheet1</code></td><td>同上；780→500，281 行</td></tr><tr><td>2025 一分一档</td><td><code>D:\_OA\天津中考资料整理\2025\2025一分一档.xlsx</code> → <code>Sheet1</code></td><td><strong>4 列</strong>：A=分数档、B=2025年全市累计、C=2025年市内六区累计、D=2024年市内六区累计；780→500，281 行</td></tr><tr><td>2026 一分一档</td><td><code>D:\_OA\天津中考资料整理\2025\2026一分一档.xlsx</code> → <code>Sheet1</code></td><td>3 列：分数档 / 2026年全市累计 / 2026年市内六区累计（市内六区含海河教育园区）；780→500，281 行</td></tr><tr><td>市内六区+海河教育园区录取线</td><td><code>D:\_OA\天津中考资料整理\录取分数线\市内\市内学校中考录取分数线.xlsx</code></td><td>8 个工作表：和平区 / 河东区 / 河西区 / 河北区 / 南开区 / 红桥区 / 海河教育园区 / <strong>汇总</strong>；列：学校名称 / 2026录取分数线 / 市六区排名 / 2026招生人数 / 2025录取分数线 / 2024录取分数线</td></tr><tr><td>非市内 10 区录取线</td><td><code>D:\_OA\天津中考资料整理\录取分数线\非市内\非市内学校中考录取分数线.xlsx</code></td><td>11 个工作表：宁河区 / 宝坻区 / 蓟州区 / 北辰区 / 静海区 / 滨海新区 / 津南区 / 东丽区 / 西青区 / 武清区 / <strong>汇总</strong>；列结构同上市内，但第 3 列为「<strong>本区排名</strong>」（不是市六区排名）</td></tr><tr><td>招生范围（可报性）</td><td><code>D:\_OA\天津中考资料整理\报考指南\天津中考招生学校及招生范围.xlsx</code>（本批交付）</td><td>学校代码 / 校名 / 招生范围 / 计划数 / 所属批次 / 区域</td></tr><tr><td>规则依据</td><td><code>D:\_OA\天津中考资料整理\报考指南\天津中考规则简介.docx</code></td><td>批次、志愿数、指标生、特长生、政策照顾等规则说明</td></tr></tbody></table></div>
+<h4>3.1 一分一档表读取与归一化</h4>
+<pre><code># 分数档单元格形如 &quot;775以上&quot;，解析出下界整数 s；含义：成绩 &gt;= s 的累计人数
+def load_rank_table(path, sheet=&quot;Sheet1&quot;, col_city=1, col_zone=2):
+    rows = []           # [(s, cum_city, cum_zone), ...]  按 s 降序
+    for r in read_sheet(path, sheet)[1:]:        # 跳过表头
+        s = int(str(r[0]).replace(&quot;以上&quot;, &quot;&quot;).strip())
+        rows.append((s, int(r[col_city]), int(r[col_zone])))
+    return rows</code></pre>
+<blockquote><p>注意 2025 表多一列（D 列 2024 年市内六区累计），是源表自带的历史对照列，<strong>预测时只用 B、C 两列</strong>。</p></blockquote>
+<h4>3.2 录取线表的清洗规则</h4>
+<p>录取线表由图片誊录而来，存在以下<strong>非数值形态</strong>，解析时必须逐类处理，不得直接 <code>float()</code>：</p>
+<div class="doc-table-wrap"><table><thead><tr><th>形态</th><th>示例</th><th>处理</th></tr></thead><tbody><tr><td>换行复合值</td><td><code>721.95（市六区）\n718.85（全市）</code></td><td>按考生所属范围取对应值（市内六区考生取「市六区」值，非市内取「全市」值）</td></tr><tr><td>区间排名</td><td><code>2182-1960</code>、<code>2325-2301（市六区）</code></td><td>取区间最差端（数值较大者）作为保守位次</td></tr><tr><td>未录满 / 录满</td><td><code>未录满</code></td><td>该年视为「无有效最低线」，跨年计算时该年跳过</td></tr><tr><td>占位符</td><td><code>/</code>、空串</td><td>视为缺失，跳过该年</td></tr><tr><td>多区标注</td><td><code>723.25（塘沽）\n720.15（新区）\n721.05（泰达）</code></td><td>按考生所在细分区域匹配；无法匹配则跳过该校</td></tr><tr><td>征询相关</td><td><code>一次征询钢线590.05</code>、<code>二次征询最低分573.3</code></td><td>视为该年最低线（数值），并标记 <code>via=征询</code></td></tr></tbody></table></div>
+<hr>
+<h3>4. 算法</h3>
+<h4>4.1 分数 → 位次（核心函数）</h4>
+<p>一分一档表给出的是<strong>整数分的累计人数</strong>。设</p>
+<ul><li><code>cum(s)</code> = 成绩 ≥ s 的人数（由表直接查得，s 为表内整数）</li><li>表内最高档为 <code>S_max</code>（如 780），最低档为 <code>S_min</code>（500）</li></ul>
+<p>对输入分 <code>x</code>：</p>
+<pre><code>若 x &gt;= S_max:  位次上界 = 1，位次下界 = cum(S_max)      # 落在最高档内，只能给出区间
+若 x &lt;  S_min:  返回 None（表格未覆盖），提示&quot;低于 500 分，无法定位位次&quot;
+否则:
+    hi = ceil(x); lo = floor(x)
+    若 lo == hi:  pos_hi = cum(hi) + 1 ; pos_lo = cum(hi)
+    否则（x 为小数，假设该分区间内人数均匀分布）:
+        位次 = cum(hi) + (hi - x) * (cum(lo) - cum(hi))
+        pos_hi = round(位次) ; pos_lo = round(位次) - 1   # 保守区间 ±0
+    返回 区间 [pos_hi, pos_lo]（pos_hi 为&quot;最差排名&quot;，pos_lo 为&quot;最好排名&quot;）</code></pre>
+<blockquote><p><strong>务实取法</strong>：对外只报 <strong><code>pos_hi</code>（即&quot;最差位次&quot;）</strong>，避免给家长过度乐观的估计。</p></blockquote>
+<p><strong>全市位次</strong> 用 <code>col_city</code>；<strong>市内六区位次</strong> 用 <code>col_zone</code>。非市内考生若需「本区位次」，需该区单独的一分一档表（当前资料未提供，程序应返回「不可用」而非猜测）。</p>
+<h4>4.2 院校录取线 → 位次</h4>
+<p>对每所学校、每个有数据的年份 <code>y ∈ {2024, 2025, 2026}</code>：</p>
+<pre><code>score_y = 该校 y 年录取最低分（按 3.2 清洗后）
+rank_y  = 4.1(score_y, year=y)   # 用「y 年的一分一档表」换算</code></pre>
+<p>得到 <code>rank_2026 / rank_2025 / rank_2024</code> 三个位次。<strong>这就是该年份被录取的末位考生位次</strong>（近似）。</p>
+<h4>4.3 冲 / 稳 / 保 分档</h4>
+<p>设考生位次 <code>P</code>（用 4.1 得到的最差位次），院校参考位次集合 <code>R = {rank_y}</code>（剔除缺失年份）：</p>
+<pre><code>R_sorted = 升序排列(R)                 # 位次数值越小越难考
+r_best  = R_sorted[0]                  # 最难的一年
+r_mid   = 中位数(R_sorted)
+r_worst = R_sorted[-1]                 # 最简单的一年
+
+若 P &lt;= r_best             → 保   （三年中最难的一年也能进）
+若 r_best &lt; P &lt;= r_mid     → 稳   （多数年份可进）
+若 r_mid  &lt; P &lt;= r_worst   → 冲   （仅宽松年份可进，风险较高）
+若 P &gt;  r_worst            → 风险 （三年均够不到）</code></pre>
+<p><strong>可选增强</strong>：把位次差换算成「安全边际」<code>margin = (r_worst - P) / r_worst</code>，输出百分比，便于排序：</p>
+<ul><li><code>margin ≥ 0.15</code> → 保</li><li><code>0 ≤ margin &lt; 0.15</code> → 稳</li><li><code>-0.10 ≤ margin &lt; 0</code> → 冲</li><li><code>margin &lt; -0.10</code> → 风险</li></ul>
+<blockquote><p>两套判据二选一即可，推荐<strong>先用 R 分位法出档，再用 margin 排序</strong>。</p></blockquote>
+<h4>4.4 可报性过滤（先过滤，再分档）</h4>
+<p>在 4.3 之前，必须先用任务 1 产出的<strong>招生范围表</strong>筛掉考生不能报的学校：</p>
+<pre><code>可报条件（满足其一）：
+  1. 招生范围为「全市」
+  2. 招生范围包含考生所在区（含市内六区考生的&quot;市内六区&quot;、滨海新区考生的&quot;塘沽/汉沽/大港/油田/泰达/生态城/保税/高新&quot;等细分）
+  3. 民办校面向本区或面向全市的对应计划</code></pre>
+<p><strong>户籍硬约束</strong>（规则见 <code>天津中考规则简介.docx</code>）：无本市常住户口且无蓝印户口的考生，<strong>不得填报普通高中志愿</strong>，程序应直接拒绝高中段预测并提示。</p>
+<h4>4.5 输出结构</h4>
+<pre><code>{
+  &quot;input&quot;: { &quot;score&quot;: 721.95, &quot;district&quot;: &quot;和平区&quot;, &quot;year&quot;: 2026 },
+  &quot;rank&quot;: {
+    &quot;city&quot;: { &quot;worst&quot;: 18542, &quot;best&quot;: 18301, &quot;band&quot;: &quot;721以上&quot; },
+    &quot;zone_nlq&quot;: { &quot;worst&quot;: 10230, &quot;best&quot;: 10120, &quot;band&quot;: &quot;721以上&quot; }
+  },
+  &quot;eligible_schools&quot;: [
+    {
+      &quot;name&quot;: &quot;天津市第XX中学&quot;, &quot;region&quot;: &quot;和平区&quot;, &quot;scope&quot;: &quot;市内六区&quot;,
+      &quot;rank_ref&quot;: { &quot;2026&quot;: 18120, &quot;2025&quot;: 17300, &quot;2024&quot;: 16550 },
+      &quot;score_ref&quot;: { &quot;2026&quot;: &quot;721.95（市六区）&quot;, &quot;2025&quot;: &quot;722.5&quot;, &quot;2024&quot;: &quot;718.6&quot; },
+      &quot;tag&quot;: &quot;稳&quot;, &quot;margin&quot;: 0.062
+    }
+  ],
+  &quot;summary&quot;: { &quot;保&quot;: 12, &quot;稳&quot;: 18, &quot;冲&quot;: 25, &quot;风险&quot;: 40 },
+  &quot;warnings&quot;: [&quot;该校 2026 数据为&#x27;一次征询钢线&#x27;，非首轮录取线&quot;]
+}</code></pre>
+<hr>
+<h3>5. 接口设计（建议）</h3>
+<h4>5.1 CLI</h4>
+<pre><code>python predict.py --score 721.95 --district 和平区 [--year 2026] [--top 30] [--format table|json]</code></pre>
+<h4>5.2 Python API</h4>
+<pre><code>class TianjinZhongkaoPredictor:
+    def __init__(self, data_root: str = r&quot;D:\_OA\天津中考资料整理&quot;): ...
+    def rank_of(self, score: float, year: int, scope: str = &quot;city&quot;) -&gt; tuple[int, int]:
+        &quot;&quot;&quot;返回 (最差位次, 最好位次)；scope ∈ {city, zone}。&quot;&quot;&quot;
+    def eligible_schools(self, district: str) -&gt; list[School]: ...
+    def predict(self, score: float, district: str, year: int = 2026) -&gt; Prediction: ...</code></pre>
+<h4>5.3 目录结构建议</h4>
+<pre><code>predict/
+├── data_loader.py      # 读取一分一档 / 录取线 / 招生范围，含 3.2 清洗
+├── ranker.py           # 4.1 分数→位次
+├── matcher.py          # 4.2~4.4 院校位次换算与分档
+├── cli.py              # 5.1 命令行入口
+└── tests/
+    └── test_ranker.py  # 用一分一档表逐行反查自校验</code></pre>
+<hr>
+<h3>6. 校验与边界</h3>
+<h4>6.1 必须内置的自校验</h4>
+<ol><li><strong>单调性</strong>：任一年一分一档表，分数档必须严格递减 1 分、累计数必须单调递增；否则数据文件损坏，直接报错。</li><li><strong>反查一致性</strong>：对表中每一行 <code>s</code>，断言 <code>ranker.rank_of(s, year).worst == cum(s)</code>，全表 0 误差才算通过。</li><li><strong>交叉印证</strong>：2025 表第 D 列「2024 年市内六区累计」应与 <code>2024一分一档.xlsx</code> 的市内六区列逐行一致（本次整理已确认首行 233、末行 33854 吻合）——可用于检测年份串档。</li><li><strong>市内 ≤ 全市</strong>：任何分数下，市内六区累计数必须 ≤ 全市累计数。</li></ol>
+<h4>6.2 已知数据疑点（程序应原样保留并在输出中提示）</h4>
+<ul><li>红桥区·瑞景中学 2026「市六区排名」源图为 <code>2325-2301</code>，与相邻行（2.5 万–2.8 万）明显不连续，疑似源图笔误。</li><li>南开区·南大奥宇高级中学：2025 年全市线（585.2）高于市六区线（573.5）；2024 年全市线仅 424.2，波动异常。</li><li>耀华滨海与一中滨海：塘沽线（723.25）与排名（1162-1127）完全相同，经放大核验为源图原样。</li></ul>
+<blockquote><p>处理策略：<strong>不修正</strong>，但在 <code>warnings</code> 中提示「该校该年数据疑似异常，已按源图使用」。</p></blockquote>
+<h4>6.3 不可用场景（明确返回不可用，不猜测）</h4>
+<ul><li>分数低于一分一档表最低档（500 分）→ 无法定位位次；</li><li>考生所在区无对应一分一档表（非市内区想做「本区位次」）→ 返回「不适用」，仅给全市位次；</li><li>院校近三年均无有效录取线 → 该校不参与分档，单独列入「数据不足」。</li></ul>
+<hr>
+<h3>7. 验收标准</h3>
+<div class="doc-table-wrap"><table><thead><tr><th>编号</th><th>用例</th><th>期望</th></tr></thead><tbody><tr><td>T1</td><td><code>score=780, year=2026, scope=city</code></td><td>位次 ≤ 96（2026 表 780以上累计 96）</td></tr><tr><td>T2</td><td><code>score=500, year=2026, scope=city</code></td><td>位次 = 104254</td></tr><tr><td>T3</td><td>对 2026 表全部 281 行反查</td><td>0 处不一致</td></tr><tr><td>T4</td><td><code>score=721.95, district=和平区</code></td><td>输出含位次与不少于 20 所可报学校，且「保/稳/冲」三档非空</td></tr><tr><td>T5</td><td><code>district=武清区</code></td><td>可报清单中<strong>不含</strong>仅面向市内六区招生的学校</td></tr><tr><td>T6</td><td>输入非数字 / 分数为负 / 分数 &gt; 800</td><td>明确报错，不产生结果</td></tr><tr><td>T7</td><td>无本市户口考生</td><td>直接提示不得填报普通高中志愿</td></tr></tbody></table></div>
+<hr>
+<h3>8. 与「报考指南」表格 / 文档的配合</h3>
+<div class="doc-table-wrap"><table><thead><tr><th>依赖产出</th><th>用途</th></tr></thead><tbody><tr><td><code>天津中考招生学校及招生范围.xlsx</code></td><td>4.4 可报性过滤的唯一依据（含全市可报 / 限本区 / 限市内六区等）</td></tr><tr><td><code>天津中考规则简介.docx</code></td><td>志愿数上限（如市内六区「其他高中」16 个志愿）、指标生/特长生降分、政策照顾分值的依据；用于把分档结果转成<strong>合规的志愿表建议</strong></td></tr></tbody></table></div>
+<p><strong>后续可扩展</strong>：在 4.3 分档之上，按规则文档的批次与志愿栏数量，自动生成一张「建议志愿表」（艺术类 1 个 / 九所市重点 2 个 / 其他高中 16 个），并校验「不少于 5 个志愿、所属区不少于 2 个」等硬性要求。</p>
+</main>
+<footer class="doc-foot">数据来源：《天津市高级中等学校招生报考指南》及各区录取分数线公示表。本文档由系统自动整理生成，仅供升学参考。</footer>
+</body>
+</html>
